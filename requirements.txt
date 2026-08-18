@@ -6,10 +6,12 @@ streamlit>=1.61
 python-dotenv>=1.0
 pytest>=8.0
 
-# --- Add when you implement your module ---
-# Member 2 (RAG / knowledge base):
-# chromadb
-# langchain-chroma
-# Member 2 (web search tool) — pick one:
-# tavily-python
-# duckduckgo-search
+# Member 1 (persistent checkpoints across app restarts):
+langgraph-checkpoint-sqlite>=2.0
+
+# Member 2 (RAG / knowledge base — uses Chroma's built-in local embedding,
+# no API key required):
+chromadb>=0.5
+
+# Member 2 (web search tool, no API key required):
+duckduckgo-search>=6.0
