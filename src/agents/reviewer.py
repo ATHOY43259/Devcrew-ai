@@ -16,14 +16,20 @@ Given a requirements specification and a set of code files, review the code
 against the requirements.
 
 Check for: correctness vs. the requirements, missing error handling, missing
-input validation, missing tests, obvious security smells (e.g. no input
-sanitization, secrets in code, unsafe eval/exec), and sandbox compliance —
-the code MUST use only Python's standard library (no Flask/FastAPI/Django/
-requests/SQLAlchemy imports) and MUST persist data via `sqlite3` to a real
-on-disk database file, never an in-memory dict/list. A pip-installed import
-or in-memory "storage" is grounds for CHANGES REQUESTED on its own, since
-the test sandbox cannot install packages and in-memory state isn't real
-persistence.
+input validation, missing tests, and obvious security smells (e.g. no input
+sanitization, secrets in code, unsafe eval/exec).
+
+Sandbox compliance (check the architecture doc's "Project type" first):
+- If FULL-STACK: the code MUST use only Python's standard library (no
+  Flask/FastAPI/Django/requests/SQLAlchemy imports) and MUST persist data
+  via `sqlite3` to a real on-disk database file, never an in-memory
+  dict/list. A pip-installed import or in-memory "storage" is grounds for
+  CHANGES REQUESTED on its own, since the test sandbox cannot install
+  packages and in-memory state isn't real persistence.
+- If STATIC FRONTEND: there should be NO Python backend, server, or
+  database at all — plain HTML/CSS/JS plus one pytest file that reads the
+  HTML as text. Do not request a backend/database for a static frontend;
+  that would be over-engineering the requirements.
 
 Respond in this exact format:
 - First line: either "APPROVED" or "CHANGES REQUESTED" (nothing else on that line).
@@ -49,6 +55,7 @@ def reviewer_node(state: ProjectState) -> dict:
     else:
         user_prompt = (
             f"Requirements:\n{state.get('requirements_doc', '')}\n\n"
+            f"Architecture (see Project type):\n{state.get('architecture_doc', '')}\n\n"
             f"Code files:\n{_format_code(state.get('code_files', {}))}"
         )
         feedback, usage = call_llm(AGENT, SYSTEM_PROMPT, user_prompt)
