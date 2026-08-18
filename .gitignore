@@ -12,6 +12,7 @@ venv/
 logs/
 *.log
 exports/
+memory_store/
 
 # IDE / OS
 .vscode/

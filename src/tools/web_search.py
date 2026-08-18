@@ -1,12 +1,35 @@
-"""Web search tool — STUB. Owner: Member 2.
+"""Web search tool — REAL implementation. Owner: Member 2.
 
-TODO(Member 2): implement with Tavily (tavily-python, free tier) or
-duckduckgo-search. Keep this exact signature — the Requirements Analyst and
-Architect call it. Log every call with log_entry(...) for observability.
+Uses duckduckgo-search (no API key needed, fits the project's zero-cost
+demo philosophy). Every call is logged for observability; a failed search
+(network down, package missing, rate limited) degrades to an empty result
+list instead of crashing the pipeline — research is a nice-to-have, not a
+hard dependency for any agent.
 """
-from typing import List, Dict
+from typing import Dict, List
+
+from src.observability.logging_setup import log_entry
+
+AGENT = "web_search"
 
 
 def web_search(query: str, max_results: int = 3) -> List[Dict[str, str]]:
     """Return [{"title": ..., "url": ..., "snippet": ...}, ...]."""
-    raise NotImplementedError("Member 2: implement web_search (Tavily or DuckDuckGo).")
+    try:
+        from duckduckgo_search import DDGS
+
+        with DDGS() as ddgs:
+            raw = list(ddgs.text(query, max_results=max_results))
+        results = [
+            {
+                "title": item.get("title", ""),
+                "url": item.get("href", item.get("link", "")),
+                "snippet": item.get("body", item.get("snippet", "")),
+            }
+            for item in raw
+        ]
+        log_entry(AGENT, "INFO", f"web_search({query!r}) -> {len(results)} result(s).")
+        return results
+    except Exception as error:  # noqa: BLE001 — search is best-effort
+        log_entry(AGENT, "WARNING", f"web_search({query!r}) failed: {error}")
+        return []
