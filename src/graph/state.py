@@ -88,6 +88,14 @@ class ProjectState(TypedDict, total=False):
 
     # ------------------------------------------------------------ loop state
     revision_count: int           # Developer rework rounds so far
+    # Set when the supervisor gives up on the review/test loop after
+    # MAX_REVISIONS and proceeds anyway. review_approved/tests_passed stay
+    # an honest reflection of the real verdict (False) — these flags exist
+    # ONLY so the supervisor doesn't walk straight back into the same
+    # "still not approved/passed" check and loop on itself forever. Reset
+    # by the Developer whenever it starts a fresh round of changes.
+    review_bypassed: bool
+    tests_bypassed: bool
 
     # ------------------------------------------- post-finish modification loop
     # Optional: after the pipeline first reaches FINISH, the UI can submit a

@@ -262,11 +262,16 @@ def developer_node(state: ProjectState) -> dict:
     return {
         "code_files": files,
         "modification_pending": False,  # this round's change has been applied
-        # Rework resets review + tests so the Reviewer/Tester run again:
+        # Rework resets review + tests so the Reviewer/Tester run again. Also
+        # reset *_bypassed: those only mark "the supervisor gave up on THIS
+        # round" — a new round of code deserves a real review/test pass
+        # again, not an inherited bypass from a previous round.
         "review_feedback": "",
         "review_approved": False,
+        "review_bypassed": False,
         "test_report": "",
         "tests_passed": False,
+        "tests_bypassed": False,
         "revision_count": revision + (1 if is_rework else 0),
         "agent_messages": [msg(AGENT, "supervisor", note)],
         "logs": [log_entry(AGENT, "INFO", note)],
