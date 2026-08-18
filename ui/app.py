@@ -87,7 +87,7 @@ def start_run(request: str) -> None:
 with st.sidebar:
     st.title("DevCrew AI")
     st.caption("Multi-agent software engineering team")
-    mode = "MOCK (canned outputs, $0)" if config.MOCK_MODE else f"LIVE — {config.OPENAI_MODEL}"
+    mode = "MOCK (canned outputs, $0)" if config.MOCK_MODE else f"LIVE — {config.LLM_PROVIDER}/{config.ACTIVE_MODEL}"
     st.info(f"Mode: {mode}")
 
     request = st.text_area(

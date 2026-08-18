@@ -57,7 +57,7 @@ project.
 | Multi-agent architecture (20) | Supervisor + 7 agents, hub-and-spoke LangGraph (`src/graph/build_graph.py`, `docs/architecture.md`) |
 | Agent collaboration (15) | Reviewer->Developer and Tester->Developer rework loops; two Human->Agent revision loops (requirements, pre-deployment); `agent_messages` history |
 | User interface (15) | `ui/app.py` — 8-tab Streamlit dashboard + HITL sidebar |
-| Tool integration (10) | web search (`src/tools/web_search.py`), sandboxed pytest runner (`src/tools/code_exec.py`), OpenAI API |
+| Tool integration (10) | web search (`src/tools/web_search.py`), sandboxed pytest runner (`src/tools/code_exec.py`), OpenAI or Gemini API (`LLM_PROVIDER` in `.env`) |
 | Memory (10) | shared `ProjectState` + LangGraph checkpointer (short-term), Chroma vector KB (`src/memory/`) (long-term) |
 | Logging & observability (10) | `src/observability/` — state logs, `logs/run.log`, per-agent token/cost tracking |
 | Innovation (10) | mock-mode demo fallback, max-revision guardrails, downloadable generated project |
