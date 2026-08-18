@@ -1,0 +1,15 @@
+# Tested on Python 3.11 with the versions below (Aug 2026).
+langgraph>=1.2
+langchain>=1.3
+langchain-openai>=1.5
+streamlit>=1.61
+python-dotenv>=1.0
+pytest>=8.0
+
+# --- Add when you implement your module ---
+# Member 2 (RAG / knowledge base):
+# chromadb
+# langchain-chroma
+# Member 2 (web search tool) — pick one:
+# tavily-python
+# duckduckgo-search
