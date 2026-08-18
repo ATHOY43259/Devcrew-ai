@@ -116,6 +116,23 @@ def start_run(request: str) -> None:
     advance({"project_request": request})
 
 
+def submit_modification(request: str) -> None:
+    """Ask for a change to the already-finished project, on the SAME
+    thread — reuses the Developer -> Reviewer -> Tester loop, then pauses
+    at its own approval gate (modification_approval_node) instead of
+    re-declaring FINISH outright."""
+    advance({
+        "modification_request": request,
+        "modification_pending": True,
+        "modification_approved": False,
+        "review_feedback": "",
+        "review_approved": False,
+        "test_report": "",
+        "tests_passed": False,
+        "final_report": "",
+    })
+
+
 # ----------------------------------------------------------------- sidebar
 with st.sidebar:
     st.title("DevCrew AI")
@@ -344,5 +361,19 @@ if st.session_state.active_tab == "Final report":
                 bundle.writestr("README.md", state["documentation"])
         st.download_button("Download generated project (.zip)", buffer.getvalue(),
                            file_name="generated_project.zip")
+
+        st.divider()
+        st.subheader("Optional: request a modification")
+        st.caption("Happy with it? Just download it above — this is entirely optional. "
+                   "Otherwise, describe a change and the Developer/Reviewer/Tester loop runs "
+                   "again on the existing project; you'll get one more approval prompt before "
+                   "it's final, and you can keep requesting changes as many rounds as you like.")
+        mod_text = st.text_area(
+            "Describe the change", key="modification_text", height=80,
+            placeholder="e.g. switch to a dark color scheme, add a search bar to the header...",
+        )
+        if st.button("Submit modification", type="primary", disabled=not mod_text.strip()):
+            submit_modification(mod_text.strip())
+            st.rerun()
     else:
         st.caption("The report appears when the supervisor finishes the pipeline.")

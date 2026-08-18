@@ -89,6 +89,16 @@ class ProjectState(TypedDict, total=False):
     # ------------------------------------------------------------ loop state
     revision_count: int           # Developer rework rounds so far
 
+    # ------------------------------------------- post-finish modification loop
+    # Optional: after the pipeline first reaches FINISH, the UI can submit a
+    # follow-up change request against the finished project. Reuses the
+    # existing Developer -> Reviewer -> Tester loop, then pauses at its own
+    # HITL gate (modification_approval_node) before re-finishing. Rejecting
+    # that gate with feedback starts another round instead of ending it.
+    modification_request: str     # pending follow-up change request; "" = none
+    modification_pending: bool    # True until the Developer has applied it
+    modification_approved: bool   # True once the human approves this round
+
     # -------------------------------------------------- human-in-the-loop
     approvals: Annotated[List[str], operator.add]  # e.g. ["requirements"]
     human_feedback: str           # filled when the human rejects a stage

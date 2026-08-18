@@ -1,7 +1,7 @@
 """Wires the LangGraph workflow. Owner: Member 1.
 
 Topology (hub-and-spoke):
-    START -> supervisor -> (one of 7 agents | 2 human approval gates | END)
+    START -> supervisor -> (one of 7 agents | 3 human approval gates | END)
     every agent -> supervisor
 
 Checkpointing is SQLite-backed (checkpoints.sqlite in the repo root) so runs
@@ -23,12 +23,13 @@ from src.agents.doc_writer import doc_writer_node
 from src.agents.requirements_analyst import requirements_analyst_node
 from src.agents.reviewer import reviewer_node
 from src.agents.tester import tester_node
-from src.graph.hitl import deployment_approval_node, human_approval_node
+from src.graph.hitl import deployment_approval_node, human_approval_node, modification_approval_node
 from src.graph.state import AGENT_ORDER, ProjectState
 from src.graph.supervisor import (
     DEPLOYMENT_APPROVAL,
     FINISH,
     HUMAN_APPROVAL,
+    MODIFICATION_APPROVAL,
     route_from_supervisor,
     supervisor_node,
 )
@@ -58,6 +59,7 @@ def build_graph():
     graph.add_node("supervisor", supervisor_node)
     graph.add_node(HUMAN_APPROVAL, human_approval_node)
     graph.add_node(DEPLOYMENT_APPROVAL, deployment_approval_node)
+    graph.add_node(MODIFICATION_APPROVAL, modification_approval_node)
     for name, node in AGENT_NODES.items():
         graph.add_node(name, node)
 
@@ -69,6 +71,7 @@ def build_graph():
             **{name: name for name in AGENT_NODES},
             HUMAN_APPROVAL: HUMAN_APPROVAL,
             DEPLOYMENT_APPROVAL: DEPLOYMENT_APPROVAL,
+            MODIFICATION_APPROVAL: MODIFICATION_APPROVAL,
             FINISH: END,
         },
     )
@@ -77,6 +80,7 @@ def build_graph():
         graph.add_edge(name, "supervisor")
     graph.add_edge(HUMAN_APPROVAL, "supervisor")
     graph.add_edge(DEPLOYMENT_APPROVAL, "supervisor")
+    graph.add_edge(MODIFICATION_APPROVAL, "supervisor")
 
     return graph.compile(checkpointer=_checkpointer())
 
