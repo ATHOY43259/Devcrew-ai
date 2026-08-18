@@ -1,26 +1,34 @@
-"""QA / Test Engineer — STUB (canned output). Owner: Member 3.
+"""QA / Test Engineer — REAL implementation. Owner: Member 3.
 
-TODO(Member 3): implement for real:
-  1. Write the generated code_files to a temp dir with src/tools/code_exec.py
-     and RUN pytest in a subprocess (timeout 60 s) — real tool usage, big
-     rubric win.
-  2. tests_passed = (pytest exit code == 0); test_report = captured output.
-  3. On failure, the supervisor routes back to the Developer with the report
-     (second collaboration loop).
+Writes the Developer's generated files to an isolated temp directory and
+runs pytest in a subprocess (real tool usage, not an LLM call) — this agent
+never invokes an LLM, so it costs nothing even in live mode.
 """
-from src.agents.base import msg, stub_notice
+from src import config
+from src.agents.base import msg
 from src.graph.state import ProjectState
 from src.mock import canned_outputs
 from src.observability.logging_setup import log_entry
+from src.tools.code_exec import run_pytest, write_files
 
 AGENT = "tester"
 
 
 def tester_node(state: ProjectState) -> dict:
+    if config.MOCK_MODE:
+        report, passed = canned_outputs.TEST_REPORT, True
+        note = "4/4 tests passed, coverage OK — verdict PASS (mock mode)."
+    else:
+        code_files = state.get("code_files", {})
+        project_dir = write_files(code_files)
+        passed, output = run_pytest(project_dir)
+        report = output or "pytest produced no output."
+        note = f"Tests {'PASSED' if passed else 'FAILED'} — verdict {'PASS' if passed else 'FAIL'}."
+
     return {
-        "test_report": canned_outputs.TEST_REPORT,
-        "tests_passed": True,
-        "agent_messages": [msg(AGENT, "supervisor", "4/4 tests passed, coverage OK — verdict PASS.")],
-        "logs": [log_entry(AGENT, "INFO", stub_notice(AGENT, "Member 3"))],
+        "test_report": report,
+        "tests_passed": passed,
+        "agent_messages": [msg(AGENT, "supervisor", note)],
+        "logs": [log_entry(AGENT, "INFO" if passed else "WARNING", note)],
         "token_usage": {},
     }
