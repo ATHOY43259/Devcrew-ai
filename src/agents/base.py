@@ -55,11 +55,3 @@ def call_llm(
             log_entry(agent_name, "WARNING", f"LLM call failed (attempt {attempt}): {error}")
             time.sleep(2 * attempt)
     raise RuntimeError(f"{agent_name}: LLM failed after {MAX_LLM_RETRIES} attempts: {last_error}")
-
-
-def stub_notice(agent_name: str, member: str) -> str:
-    """Standard log message for not-yet-implemented agents."""
-    return (
-        f"{agent_name} is a STUB using canned output — {member} replaces it "
-        f"with a real implementation (see the TODO in its file)."
-    )

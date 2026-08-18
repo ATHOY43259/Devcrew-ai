@@ -1,13 +1,13 @@
-"""Canned outputs for MOCK_MODE and for agents that are not implemented yet.
+"""Canned outputs for MOCK_MODE — the zero-cost, no-API-key demo path.
 
 The mock scenario is: "Build a to-do list REST API with Flask".
 It deliberately includes ONE review loop (reviewer rejects v1, developer
 ships v2, reviewer approves) so the demo always shows agent collaboration —
 even with no API key and no internet.
 
-Each member replaces the stub in src/agents/<their_agent>.py with a real
-implementation; these canned outputs then only serve MOCK_MODE and the
-live-demo fallback.
+Every agent has a real LLM-backed implementation too (see src/agents/); each
+one branches on config.MOCK_MODE and falls back to these canned outputs so
+the UI stays demoable offline and the smoke tests never need an API key.
 """
 
 REQUIREMENTS_DOC = """# Software Requirements Specification — To-Do REST API

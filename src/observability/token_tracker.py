@@ -4,7 +4,7 @@ LangChain chat responses carry `usage_metadata` (input_tokens/output_tokens).
 We convert that into a per-agent delta dict; the `merge_usage` reducer in
 state.py sums deltas across the whole run. The UI reads state["token_usage"].
 
-TODO(Member 4): add per-model price table and a running cost chart in the UI.
+The per-agent cost chart lives in ui/app.py (Tokens & cost tab).
 """
 from typing import Dict
 

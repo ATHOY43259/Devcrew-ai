@@ -37,9 +37,9 @@ python -m pytest -q              # smoke tests
 ```
 
 **Live mode:** put your key in `.env`, set `MOCK_MODE=0`, and run the same
-commands. The Requirements Analyst is fully implemented; each stub agent
-switches from canned output to a real LLM implementation as its owner lands
-their module (see `TODO(Member N)` markers).
+commands. All 7 agents, the LLM-assisted supervisor, the Chroma RAG memory,
+and web search are fully implemented — live mode runs the real pipeline
+end to end, not just the Requirements Analyst.
 
 ## What the dashboard shows
 
@@ -55,7 +55,7 @@ project.
 | Rubric item | Where |
 |---|---|
 | Multi-agent architecture (20) | Supervisor + 7 agents, hub-and-spoke LangGraph (`src/graph/build_graph.py`, `docs/architecture.md`) |
-| Agent collaboration (15) | Reviewer->Developer and Tester->Developer rework loops; Human->Analyst revision loop; `agent_messages` history |
+| Agent collaboration (15) | Reviewer->Developer and Tester->Developer rework loops; two Human->Agent revision loops (requirements, pre-deployment); `agent_messages` history |
 | User interface (15) | `ui/app.py` — 8-tab Streamlit dashboard + HITL sidebar |
 | Tool integration (10) | web search (`src/tools/web_search.py`), sandboxed pytest runner (`src/tools/code_exec.py`), OpenAI API |
 | Memory (10) | shared `ProjectState` + LangGraph checkpointer (short-term), Chroma vector KB (`src/memory/`) (long-term) |

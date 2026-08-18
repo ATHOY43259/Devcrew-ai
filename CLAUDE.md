@@ -27,12 +27,16 @@ without agreement from all 4 members.**
 
 ## Module ownership — only edit your own folders
 
-| Member | Owns | Key TODOs (marked `TODO(Member N)` in code) |
+All four modules below are now fully implemented (real LLM calls behind
+`MOCK_MODE` branches, not stubs). This table still documents who owns what
+for future changes/reviews.
+
+| Member | Owns | Implemented |
 |---|---|---|
-| Member 1 | `src/graph/` | LLM-based supervisor planning; SqliteSaver; deployment approval gate; retry-from-checkpoint |
-| Member 2 | `src/agents/{requirements_analyst,architect,doc_writer}.py`, `src/memory/`, `src/tools/web_search.py` | real architect + doc_writer; Chroma RAG knowledge base; web search |
-| Member 3 | `src/agents/{developer,reviewer,tester,devops}.py`, `src/tools/code_exec.py` | real developer/reviewer/tester; sandboxed pytest runner |
-| Member 4 | `ui/`, `src/observability/` | live streaming trace; charts; pause/retry buttons; JSON logs |
+| Member 1 | `src/graph/` | LLM-assisted supervisor routing (`route()`, safety-netted by the deterministic `decide()`); SQLite checkpointing; `retry_last_step()`; second (deployment) HITL gate |
+| Member 2 | `src/agents/{requirements_analyst,architect,doc_writer}.py`, `src/memory/`, `src/tools/web_search.py` | real architect + doc_writer; Chroma RAG knowledge base (local embeddings, no API key needed); web search (duckduckgo-search) |
+| Member 3 | `src/agents/{developer,reviewer,tester,devops}.py`, `src/tools/code_exec.py` | real developer/reviewer/tester/devops; sandboxed subprocess pytest runner |
+| Member 4 | `ui/`, `src/observability/` | live incremental trace (`st.status`); token/cost bar charts; checkpoint-backed retry control; JSON Lines logging |
 
 Cross-cutting files (`state.py`, `requirements.txt`, this file): change only
 via a PR that the whole team approves.
