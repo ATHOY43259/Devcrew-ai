@@ -82,16 +82,34 @@ _CSS_CDN_PATTERN = re.compile(
     r"cdn\.tailwindcss\.com|cdn\.jsdelivr\.net/npm/bootstrap|unpkg\.com/[^\"'\s]*\.css|fonts\.googleapis\.com",
     re.IGNORECASE,
 )
-_INLINE_STYLE_PATTERN = re.compile(r"<style[^>]*>\s*\S", re.IGNORECASE)
+_INLINE_STYLE_PATTERN = re.compile(r"<style[^>]*>(.*?)</style>", re.IGNORECASE | re.DOTALL)
 _LINK_HREF_PATTERN = re.compile(r'<link[^>]+href=["\']([^"\']+\.css)["\']', re.IGNORECASE)
+_HTML_CLASS_ATTR_PATTERN = re.compile(r'class=["\']([^"\']+)["\']', re.IGNORECASE)
+_CSS_CLASS_SELECTOR_PATTERN = re.compile(r"\.(-?[a-zA-Z_][a-zA-Z0-9_-]*)")
+# Classes from external icon-font CDNs (Font Awesome, Bootstrap Icons, etc.)
+# are styled by that CDN's own stylesheet, not the project's CSS — excluded
+# from coverage so they can't cause a false positive.
+_ICON_CLASS_PREFIXES = ("fa-", "fas", "far", "fab", "fal", "fad", "bi-", "material-icons", "glyphicon", "icon-")
+
+
+def _class_tokens(html: str) -> set:
+    tokens = set()
+    for attr_value in _HTML_CLASS_ATTR_PATTERN.findall(html):
+        tokens.update(attr_value.split())
+    return {t for t in tokens if not t.startswith(_ICON_CLASS_PREFIXES)}
 
 
 def _check_frontend_styling(files: dict) -> list:
-    """Guard against the silent "raw unstyled HTML" failure mode: an HTML
-    file that links a .css file which doesn't exist among the generated
-    files (typo, path mismatch), or has no styling at all. Every other
-    check here (syntax, JSON shape) is mechanical; this one is too — it
-    doesn't ask an LLM to notice, so it can't miss it."""
+    """Guard against the silent "raw unstyled HTML" failure mode. Two
+    mechanical (non-LLM) checks, wired into the same retry loop as
+    syntax_check:
+    1. A linked .css file that doesn't exist among the generated files
+       (typo/path mismatch), or no styling reference at all.
+    2. The much sneakier failure: a real, correctly-linked CSS file whose
+       selectors don't actually match the HTML's class names (e.g. CSS
+       defines `.nav-item` while the HTML uses `.nav-link`) — the file
+       "exists", but nothing it contains ever applies. Flags when fewer
+       than 30% of the HTML's classes have any matching CSS rule."""
     html_files = {p: c for p, c in files.items() if p.lower().endswith(".html")}
     if not html_files:
         return []
@@ -99,21 +117,47 @@ def _check_frontend_styling(files: dict) -> list:
     problems = []
     for path, content in html_files.items():
         linked = _LINK_HREF_PATTERN.findall(content)
-        linked_and_present = any(
-            href.lstrip("./") in css_paths or href.lstrip("./") == css_path.split("/")[-1]
+        matched_css_paths = {
+            css_path
             for href in linked
             for css_path in css_paths
-        )
-        if linked and not linked_and_present:
+            if href.lstrip("./") in (css_path, css_path.split("/")[-1])
+        }
+        has_cdn = bool(_CSS_CDN_PATTERN.search(content))
+        inline_css = "\n".join(_INLINE_STYLE_PATTERN.findall(content))
+
+        if linked and not matched_css_paths and not has_cdn:
             problems.append(
                 f"{path}: <link> references {linked} but no matching file exists among "
                 f"{sorted(css_paths) or 'the generated .css files (none were generated)'} "
                 "— the page will render unstyled."
             )
-        elif not linked and not _INLINE_STYLE_PATTERN.search(content) and not _CSS_CDN_PATTERN.search(content):
+            continue
+        if not linked and not inline_css.strip() and not has_cdn:
             problems.append(
                 f"{path}: no <link>ed stylesheet, inline <style> block, or CSS-framework CDN "
                 "tag found — this will render as raw unstyled HTML."
+            )
+            continue
+
+        # CDN frameworks (Tailwind etc.) style via utility classes we can't
+        # verify without downloading them — skip the coverage check there.
+        if has_cdn:
+            continue
+
+        css_text = inline_css + "\n" + "\n".join(files[p] for p in matched_css_paths)
+        html_classes = _class_tokens(content)
+        if not html_classes:
+            continue
+        css_classes = set(_CSS_CLASS_SELECTOR_PATTERN.findall(css_text))
+        covered = html_classes & css_classes
+        if len(covered) / len(html_classes) < 0.3:
+            problems.append(
+                f"{path}: its CSS is linked correctly but only {len(covered)}/{len(html_classes)} "
+                f"of its HTML classes have a matching CSS rule (e.g. unmatched: "
+                f"{sorted(html_classes - covered)[:8]}) — the class names in the HTML and CSS "
+                "don't line up, so the page will render mostly unstyled. Make sure every class "
+                "used in the HTML has a corresponding selector in the CSS."
             )
     return problems
 
@@ -174,11 +218,20 @@ def developer_node(state: ProjectState) -> dict:
         if errors:
             log_entry(AGENT, "WARNING", f"Issues in generated code, retrying once: {errors}")
             retry_prompt = user_prompt + "\n\nYour code had issues:\n" + "\n".join(errors)
-            files, extra_usage = _generate_files(AGENT, retry_prompt)
-            for key in ("input_tokens", "output_tokens", "cost_usd"):
-                usage.setdefault(AGENT, {})[key] = usage.get(AGENT, {}).get(
-                    key, 0
-                ) + extra_usage.get(AGENT, {}).get(key, 0)
+            try:
+                files, extra_usage = _generate_files(AGENT, retry_prompt)
+                for key in ("input_tokens", "output_tokens", "cost_usd"):
+                    usage.setdefault(AGENT, {})[key] = usage.get(AGENT, {}).get(
+                        key, 0
+                    ) + extra_usage.get(AGENT, {}).get(key, 0)
+            except (json.JSONDecodeError, KeyError, ValueError) as error:
+                # The fix-up retry itself failed to produce parseable JSON
+                # (e.g. a long regeneration ran past the model's output
+                # limit). Ship the original, already-valid `files` instead
+                # of crashing the whole pipeline run over an imperfect —
+                # but working — first draft; the Reviewer/Tester loop still
+                # gets a chance to catch what's left.
+                log_entry(AGENT, "WARNING", f"Issue-fix retry also failed to parse, keeping v1: {error}")
 
         note = (
             f"Rework round {revision + 1}: fixed the reported issues ({len(files)} files)."

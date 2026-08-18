@@ -31,6 +31,10 @@ def msg(from_agent: str, to_agent: str, content: str) -> AgentMessage:
     )
 
 
+MAX_OUTPUT_TOKENS = 16384  # the Developer can return several multi-file HTML/CSS/JS
+# projects as one JSON blob (50k+ chars) — a low default cap truncates mid-JSON.
+
+
 def _get_llm():
     """Build the chat model for config.LLM_PROVIDER. Both providers return a
     LangChain AIMessage with a standardized `usage_metadata`, so callers
@@ -40,11 +44,19 @@ def _get_llm():
         from langchain_google_genai import ChatGoogleGenerativeAI  # local: not needed in mock mode
 
         return ChatGoogleGenerativeAI(
-            model=config.GEMINI_MODEL, google_api_key=config.GEMINI_API_KEY, temperature=0.3
+            model=config.GEMINI_MODEL,
+            google_api_key=config.GEMINI_API_KEY,
+            temperature=0.3,
+            max_output_tokens=MAX_OUTPUT_TOKENS,
         )
     from langchain_openai import ChatOpenAI  # local import: not needed in mock mode
 
-    return ChatOpenAI(model=config.OPENAI_MODEL, api_key=config.OPENAI_API_KEY, temperature=0.3)
+    return ChatOpenAI(
+        model=config.OPENAI_MODEL,
+        api_key=config.OPENAI_API_KEY,
+        temperature=0.3,
+        max_tokens=MAX_OUTPUT_TOKENS,
+    )
 
 
 def call_llm(
