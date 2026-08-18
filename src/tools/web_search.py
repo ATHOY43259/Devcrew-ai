@@ -1,7 +1,9 @@
 """Web search tool — REAL implementation. Owner: Member 2.
 
-Uses duckduckgo-search (no API key needed, fits the project's zero-cost
-demo philosophy). Every call is logged for observability; a failed search
+Uses ddgs (no API key needed, fits the project's zero-cost demo
+philosophy) — the package formerly published as duckduckgo-search, which
+is deprecated and silently returns zero results against DuckDuckGo's
+current backend. Every call is logged for observability; a failed search
 (network down, package missing, rate limited) degrades to an empty result
 list instead of crashing the pipeline — research is a nice-to-have, not a
 hard dependency for any agent.
@@ -16,7 +18,7 @@ AGENT = "web_search"
 def web_search(query: str, max_results: int = 3) -> List[Dict[str, str]]:
     """Return [{"title": ..., "url": ..., "snippet": ...}, ...]."""
     try:
-        from duckduckgo_search import DDGS
+        from ddgs import DDGS
 
         with DDGS() as ddgs:
             raw = list(ddgs.text(query, max_results=max_results))
