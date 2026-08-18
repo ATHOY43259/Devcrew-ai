@@ -65,6 +65,46 @@ def test_supervisor_decide_ordering():
     assert decide({"requirements_doc": "x", "approvals": ["requirements"]})[0] == "architect"
 
 
+def test_max_revisions_bailout_does_not_loop_forever():
+    """Regression test: hitting MAX_REVISIONS with the review/test loop
+    still failing must NOT route the supervisor back into the same
+    "still not approved/passed" check forever. Reported live: doc_writer
+    ran in an unbroken loop for 90+ seconds, never reaching FINISH."""
+    base = {
+        "requirements_doc": "x", "approvals": ["requirements"],
+        "architecture_doc": "x", "code_files": {"a.py": "1"},
+        "review_feedback": "still bad", "review_approved": False,
+        "revision_count": 2,  # == MAX_REVISIONS default
+    }
+
+    # First bailout: past the review gate, WITH an override the caller
+    # must apply — the override is what prevents the loop.
+    next_node, _, overrides = decide(base)
+    assert next_node == "tester"
+    assert overrides == {"review_bypassed": True}
+
+    # Simulate applying that override, then Tester running and STILL
+    # failing — the classic loop trigger. Must NOT route back to "tester"
+    # or re-declare the same review bailout again.
+    state_after_tester = {
+        **base, **overrides,
+        "test_report": "still failing", "tests_passed": False,
+    }
+    next_node2, _, overrides2 = decide(state_after_tester)
+    assert next_node2 == "doc_writer", f"expected to proceed past QA, got {next_node2!r} (would loop)"
+    assert overrides2 == {"tests_bypassed": True}
+
+    # Simulate applying THAT override too, then doc_writer having run.
+    # This must move on to deployment approval / FINISH, not loop again.
+    state_after_docs = {
+        **state_after_tester, **overrides2,
+        "documentation": "docs", "approvals": ["requirements", "deployment"],
+        "deployment_files": {"Dockerfile": "x"},
+    }
+    next_node3, _, _ = decide(state_after_docs)
+    assert next_node3 == "FINISH", f"expected FINISH, got {next_node3!r} (still stuck)"
+
+
 def test_modification_loop_after_finish():
     """A finished project can take a follow-up modification request on the
     same thread: Developer -> Reviewer -> Tester run again, then a NEW
