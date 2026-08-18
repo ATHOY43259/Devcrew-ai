@@ -27,7 +27,15 @@ exactly, it already decided this for you:
   server, no Flask. Still include exactly one Python test file (tests/ or
   test_*.py) using pytest that reads the HTML file(s) as plain text (no
   server needed) and asserts the key elements/structure from the
-  requirements are present.
+  requirements are present. Make it visually polished, not raw unstyled
+  HTML — prefer Tailwind CSS via CDN
+  (`<script src="https://cdn.tailwindcss.com"></script>` in `<head>`, then
+  Tailwind utility classes) since it always renders correctly with zero
+  risk of a broken stylesheet link. If you write a separate .css file
+  instead, every HTML file MUST `<link rel="stylesheet" href="...">` it
+  using the EXACT same path you used as its key in "files", and the CSS
+  must contain real, substantial rules (layout, color, spacing,
+  typography) — not a handful of trivial ones.
 - FULL-STACK: implement in Python, using ONLY the standard library — the
   test sandbox has no internet access and installs no pip packages, only
   what's already on the machine running this app (stdlib + pytest). Never
@@ -55,11 +63,59 @@ def _extract_json(text: str) -> str:
 
 
 def _parse_files(text: str) -> dict:
-    payload = json.loads(_extract_json(text))
+    candidate = _extract_json(text)
+    start = candidate.find("{")
+    if start == -1:
+        raise ValueError("no JSON object found in the response")
+    # raw_decode parses just the first complete JSON value and ignores
+    # anything after it — models occasionally add trailing prose/duplicate
+    # content after an otherwise-valid {"files": ...} object, which
+    # json.loads() would reject wholesale as "Extra data".
+    payload, _ = json.JSONDecoder().raw_decode(candidate, start)
     files = payload["files"]
     if not isinstance(files, dict) or not files:
         raise ValueError("'files' must be a non-empty object")
     return files
+
+
+_CSS_CDN_PATTERN = re.compile(
+    r"cdn\.tailwindcss\.com|cdn\.jsdelivr\.net/npm/bootstrap|unpkg\.com/[^\"'\s]*\.css|fonts\.googleapis\.com",
+    re.IGNORECASE,
+)
+_INLINE_STYLE_PATTERN = re.compile(r"<style[^>]*>\s*\S", re.IGNORECASE)
+_LINK_HREF_PATTERN = re.compile(r'<link[^>]+href=["\']([^"\']+\.css)["\']', re.IGNORECASE)
+
+
+def _check_frontend_styling(files: dict) -> list:
+    """Guard against the silent "raw unstyled HTML" failure mode: an HTML
+    file that links a .css file which doesn't exist among the generated
+    files (typo, path mismatch), or has no styling at all. Every other
+    check here (syntax, JSON shape) is mechanical; this one is too — it
+    doesn't ask an LLM to notice, so it can't miss it."""
+    html_files = {p: c for p, c in files.items() if p.lower().endswith(".html")}
+    if not html_files:
+        return []
+    css_paths = {p for p in files if p.lower().endswith(".css")}
+    problems = []
+    for path, content in html_files.items():
+        linked = _LINK_HREF_PATTERN.findall(content)
+        linked_and_present = any(
+            href.lstrip("./") in css_paths or href.lstrip("./") == css_path.split("/")[-1]
+            for href in linked
+            for css_path in css_paths
+        )
+        if linked and not linked_and_present:
+            problems.append(
+                f"{path}: <link> references {linked} but no matching file exists among "
+                f"{sorted(css_paths) or 'the generated .css files (none were generated)'} "
+                "— the page will render unstyled."
+            )
+        elif not linked and not _INLINE_STYLE_PATTERN.search(content) and not _CSS_CDN_PATTERN.search(content):
+            problems.append(
+                f"{path}: no <link>ed stylesheet, inline <style> block, or CSS-framework CDN "
+                "tag found — this will render as raw unstyled HTML."
+            )
+    return problems
 
 
 def _generate_files(agent_name: str, user_prompt: str) -> tuple[dict, dict]:
@@ -114,10 +170,10 @@ def developer_node(state: ProjectState) -> dict:
             user_prompt += f"\n\nFailing test report to fix:\n{state['test_report']}"
 
         files, usage = _generate_files(AGENT, user_prompt)
-        errors = syntax_check(files)
+        errors = syntax_check(files) + _check_frontend_styling(files)
         if errors:
-            log_entry(AGENT, "WARNING", f"Syntax errors in generated code, retrying once: {errors}")
-            retry_prompt = user_prompt + "\n\nYour code had syntax errors:\n" + "\n".join(errors)
+            log_entry(AGENT, "WARNING", f"Issues in generated code, retrying once: {errors}")
+            retry_prompt = user_prompt + "\n\nYour code had issues:\n" + "\n".join(errors)
             files, extra_usage = _generate_files(AGENT, retry_prompt)
             for key in ("input_tokens", "output_tokens", "cost_usd"):
                 usage.setdefault(AGENT, {})[key] = usage.get(AGENT, {}).get(
