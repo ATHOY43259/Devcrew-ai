@@ -32,10 +32,27 @@ if "thread_id" not in st.session_state:
     st.session_state.thread_id = None
     st.session_state.events = []          # raw stream events, for the trace tab
     st.session_state.pending = None       # interrupt payload awaiting a human
+    st.session_state.toast_message = None
+
+if st.session_state.get("toast_message"):
+    st.toast(st.session_state.toast_message)
+    st.session_state.toast_message = None
 
 app = get_app()
 
 NON_ARTIFACT_KEYS = ("agent_messages", "logs", "token_usage")
+
+PRESET_REQUESTS = {
+    "To-do API": "Build a to-do list REST API with Flask",
+    "E-commerce frontend": "Build a simple e-commerce product listing frontend with a shopping cart",
+    "URL shortener": "Build a URL shortener service with click tracking",
+}
+if "project_request_text" not in st.session_state:
+    st.session_state.project_request_text = PRESET_REQUESTS["To-do API"]
+
+
+def _set_preset_request(text: str) -> None:
+    st.session_state.project_request_text = text
 
 
 def graph_config():
@@ -67,14 +84,20 @@ def _consume(stream, status=None) -> None:
 def advance(payload) -> None:
     """Stream the graph until it finishes or pauses for a human, updating
     the UI live as each agent reports back (Streamlit's st.status flushes
-    incrementally within a single run)."""
+    incrementally within a single run). Every caller follows this with
+    st.rerun(), which would discard an st.toast() called here before it
+    ever reaches the browser — so queue the message and fire it on the
+    next run instead (see the top of the script)."""
     st.session_state.pending = None
     with st.status("Agents working...", expanded=True) as status:
         _consume(app.stream(payload, graph_config(), stream_mode="updates"), status)
         if st.session_state.pending:
             status.update(label="Waiting for human approval", state="error")
+            st.session_state.toast_message = "Pipeline paused — your approval is needed."
         else:
             status.update(label="Done", state="complete")
+            if current_state().get("final_report"):
+                st.session_state.toast_message = "Pipeline finished — final report is ready."
 
 
 def start_run(request: str) -> None:
@@ -90,11 +113,12 @@ with st.sidebar:
     mode = "MOCK (canned outputs, $0)" if config.MOCK_MODE else f"LIVE — {config.LLM_PROVIDER}/{config.ACTIVE_MODEL}"
     st.info(f"Mode: {mode}")
 
-    request = st.text_area(
-        "Project request",
-        value="Build a to-do list REST API with Flask",
-        height=100,
-    )
+    st.caption("Quick start")
+    preset_cols = st.columns(len(PRESET_REQUESTS))
+    for col, (label, text) in zip(preset_cols, PRESET_REQUESTS.items()):
+        col.button(label, on_click=_set_preset_request, args=(text,), width='stretch')
+
+    request = st.text_area("Project request", key="project_request_text", height=100)
     if st.button("Run pipeline", type="primary", width='stretch'):
         start_run(request)
         st.rerun()
@@ -153,16 +177,6 @@ c3.metric("Rework rounds", state.get("revision_count", 0))
 c4.metric("Tokens", f"{run_totals['input_tokens'] + run_totals['output_tokens']:,}")
 c5.metric("Est. cost (USD)", f"${run_totals['cost_usd']:.4f}")
 
-if st.session_state.pending:
-    with st.expander("Document waiting for your approval", expanded=True):
-        st.markdown(st.session_state.pending.get("document", ""))
-
-# ------------------------------------------------------------------- tabs
-tabs = st.tabs(
-    ["Dashboard", "Live trace", "Communications", "Graph", "Tokens & cost",
-     "Logs", "Memory", "Final report"]
-)
-
 ARTIFACT_OF = {
     "requirements_analyst": "requirements_doc",
     "architect": "architecture_doc",
@@ -172,6 +186,19 @@ ARTIFACT_OF = {
     "doc_writer": "documentation",
     "devops": "deployment_files",
 }
+if st.session_state.thread_id:
+    done_count = sum(1 for key in ARTIFACT_OF.values() if state.get(key))
+    st.progress(done_count / len(ARTIFACT_OF), text=f"{done_count}/{len(ARTIFACT_OF)} agents done")
+
+if st.session_state.pending:
+    with st.expander("Document waiting for your approval", expanded=True):
+        st.markdown(st.session_state.pending.get("document", ""))
+
+# ------------------------------------------------------------------- tabs
+tabs = st.tabs(
+    ["Dashboard", "Live trace", "Communications", "Graph", "Tokens & cost",
+     "Logs", "Memory", "Final report"]
+)
 
 with tabs[0]:
     st.subheader("Agent workflow status")
