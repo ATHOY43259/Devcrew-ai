@@ -29,8 +29,15 @@ Rules:
 - No prose, no markdown code fences — the response must be valid JSON and
   nothing else.
 - Include a test file under tests/ or test_*.py using pytest.
-- Keep the implementation self-contained (standard library + the framework
-  named in the architecture doc only).
+- Use ONLY Python's standard library — the test sandbox has no internet
+  access and installs no pip packages, only what's already on the machine
+  running this app (stdlib + pytest). Never import Flask, FastAPI, Django,
+  requests, SQLAlchemy, etc. — `http.server`/`wsgiref` for HTTP, `sqlite3`
+  for persistence.
+- Persist data with `sqlite3` against a real on-disk database file (per the
+  architecture doc's schema) — never an in-memory dict/list. Tests should
+  use a temporary db file (e.g. via tempfile) so they don't collide with
+  each other or leave state behind.
 - If given "reviewer feedback" or a "failing test report", fix ONLY the
   reported issues — do not rewrite unrelated code."""
 
