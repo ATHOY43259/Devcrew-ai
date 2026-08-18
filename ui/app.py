@@ -28,11 +28,15 @@ from src.observability.token_tracker import totals  # noqa: E402
 st.set_page_config(page_title="DevCrew AI", page_icon=":hammer_and_wrench:", layout="wide")
 
 # ----------------------------------------------------------------- session
+TAB_NAMES = ["Dashboard", "Live trace", "Communications", "Graph", "Tokens & cost",
+             "Logs", "Memory", "Final report"]
+
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = None
     st.session_state.events = []          # raw stream events, for the trace tab
     st.session_state.pending = None       # interrupt payload awaiting a human
     st.session_state.toast_message = None
+    st.session_state.active_tab = TAB_NAMES[0]
 
 if st.session_state.get("toast_message"):
     st.toast(st.session_state.toast_message)
@@ -55,6 +59,10 @@ def _set_preset_request(text: str) -> None:
     st.session_state.project_request_text = text
 
 
+def _goto(tab_name: str) -> None:
+    st.session_state.active_tab = tab_name
+
+
 def graph_config():
     return {"configurable": {"thread_id": st.session_state.thread_id}}
 
@@ -66,19 +74,20 @@ def current_state() -> dict:
     return snapshot.values if snapshot else {}
 
 
-def _consume(stream, status=None) -> None:
+def _consume(stream, log_box=None) -> None:
     """Drain a graph stream into session state, writing each step live into
-    `status` (an st.status container) as it arrives."""
+    `log_box` (a fixed-height container, so a long run scrolls inside its
+    own small box instead of growing the whole page) as it arrives."""
     for event in stream:
         st.session_state.events.append(event)
         for node, update in event.items():
             if node == "__interrupt__":
                 st.session_state.pending = event["__interrupt__"][0].value
-                if status:
-                    status.write("Paused — waiting for human input.")
-            elif status:
+                if log_box:
+                    log_box.write("Paused — waiting for human input.")
+            elif log_box:
                 keys = ", ".join(k for k in (update or {}) if k not in NON_ARTIFACT_KEYS) or "-"
-                status.write(f"**{node}** wrote: `{keys}`")
+                log_box.write(f"**{node}** wrote: `{keys}`")
 
 
 def advance(payload) -> None:
@@ -90,7 +99,8 @@ def advance(payload) -> None:
     next run instead (see the top of the script)."""
     st.session_state.pending = None
     with st.status("Agents working...", expanded=True) as status:
-        _consume(app.stream(payload, graph_config(), stream_mode="updates"), status)
+        log_box = st.container(height=240)  # fixed height -> scrolls internally
+        _consume(app.stream(payload, graph_config(), stream_mode="updates"), log_box)
         if st.session_state.pending:
             status.update(label="Waiting for human approval", state="error")
             st.session_state.toast_message = "Pipeline paused — your approval is needed."
@@ -152,7 +162,8 @@ with st.sidebar:
                            "useful if an agent failed or produced a bad result."):
             try:
                 with st.status("Retrying last step...", expanded=True) as status:
-                    _consume(retry_last_step(st.session_state.thread_id), status)
+                    log_box = st.container(height=240)
+                    _consume(retry_last_step(st.session_state.thread_id), log_box)
                     status.update(label="Retry complete", state="complete")
             except RuntimeError as error:
                 st.error(str(error))
@@ -171,11 +182,21 @@ elif state.get("final_report"):
     status_text = "finished"
 else:
     status_text = "running"
-c1.metric("Status", status_text)
-c2.metric("Messages", len(state.get("agent_messages", [])))
-c3.metric("Rework rounds", state.get("revision_count", 0))
-c4.metric("Tokens", f"{run_totals['input_tokens'] + run_totals['output_tokens']:,}")
-c5.metric("Est. cost (USD)", f"${run_totals['cost_usd']:.4f}")
+with c1:
+    st.metric("Status", status_text)
+    st.button("Dashboard", key="goto_status", on_click=_goto, args=("Dashboard",), width='stretch')
+with c2:
+    st.metric("Messages", len(state.get("agent_messages", [])))
+    st.button("Communications", key="goto_messages", on_click=_goto, args=("Communications",), width='stretch')
+with c3:
+    st.metric("Rework rounds", state.get("revision_count", 0))
+    st.button("Live trace", key="goto_rework", on_click=_goto, args=("Live trace",), width='stretch')
+with c4:
+    st.metric("Tokens", f"{run_totals['input_tokens'] + run_totals['output_tokens']:,}")
+    st.button("Tokens & cost", key="goto_tokens", on_click=_goto, args=("Tokens & cost",), width='stretch')
+with c5:
+    st.metric("Est. cost (USD)", f"${run_totals['cost_usd']:.4f}")
+    st.button("Tokens & cost", key="goto_cost", on_click=_goto, args=("Tokens & cost",), width='stretch')
 
 ARTIFACT_OF = {
     "requirements_analyst": "requirements_doc",
@@ -195,12 +216,11 @@ if st.session_state.pending:
         st.markdown(st.session_state.pending.get("document", ""))
 
 # ------------------------------------------------------------------- tabs
-tabs = st.tabs(
-    ["Dashboard", "Live trace", "Communications", "Graph", "Tokens & cost",
-     "Logs", "Memory", "Final report"]
-)
+# A segmented control instead of st.tabs: header cards above need to jump
+# straight to a section, and st.tabs has no way to be switched from code.
+st.segmented_control("Section", TAB_NAMES, key="active_tab", required=True, width='stretch')
 
-with tabs[0]:
+if st.session_state.active_tab == "Dashboard":
     st.subheader("Agent workflow status")
     next_agent = state.get("next_agent", "")
     cols = st.columns(len(AGENT_ORDER))
@@ -220,7 +240,7 @@ with tabs[0]:
     if approvals:
         st.caption(f"Human approvals granted so far: {', '.join(approvals)}")
 
-with tabs[1]:
+if st.session_state.active_tab == "Live trace":
     st.subheader("Live execution trace")
     st.caption("Populated live while the pipeline runs (see the sidebar's "
                "'Agents working...' status panel), and replayed here after each rerun.")
@@ -234,7 +254,7 @@ with tabs[1]:
                 keys = ", ".join(k for k in (update or {}) if k not in NON_ARTIFACT_KEYS) or "-"
                 st.text(f"step {i:>3}  {node:<22} wrote: {keys}")
 
-with tabs[2]:
+if st.session_state.active_tab == "Communications":
     st.subheader("Agent communication history")
     for message in state.get("agent_messages", []):
         st.markdown(
@@ -242,7 +262,7 @@ with tabs[2]:
             f"**{message['to_agent']}**: {message['content']}"
         )
 
-with tabs[3]:
+if st.session_state.active_tab == "Graph":
     st.subheader("Execution graph (LangGraph)")
     mermaid_src = app.get_graph().draw_mermaid()
     try:
@@ -252,7 +272,7 @@ with tabs[3]:
                    "(paste into mermaid.live).")
     st.code(mermaid_src, language="text")
 
-with tabs[4]:
+if st.session_state.active_tab == "Tokens & cost":
     st.subheader("Token usage & estimated API cost")
     usage = state.get("token_usage", {})
     if usage:
@@ -272,7 +292,7 @@ with tabs[4]:
                    "Run with MOCK_MODE=0 and an API key to see real numbers.")
     st.metric("Run total", f"${run_totals['cost_usd']:.4f}")
 
-with tabs[5]:
+if st.session_state.active_tab == "Logs":
     st.subheader("Execution logs & errors")
     logs = state.get("logs", [])
     level = st.selectbox("Level filter", ["ALL", "INFO", "WARNING", "ERROR"])
@@ -284,7 +304,7 @@ with tabs[5]:
     st.caption("Also written to logs/run.log (human-readable) and "
                "logs/run_<start time>.jsonl (JSON Lines, one file per app run).")
 
-with tabs[6]:
+if st.session_state.active_tab == "Memory":
     st.subheader("Memory viewer")
     st.markdown("**Short-term memory** — the shared graph state (checkpointed per thread):")
     for key in ("requirements_doc", "architecture_doc", "review_feedback",
@@ -310,7 +330,7 @@ with tabs[6]:
     except Exception as error:  # noqa: BLE001 — surface KB errors without crashing the dashboard
         st.caption(f"Knowledge base unavailable: {error}")
 
-with tabs[7]:
+if st.session_state.active_tab == "Final report":
     st.subheader("Final report & deliverables")
     if state.get("final_report"):
         st.markdown(state["final_report"])
