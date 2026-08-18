@@ -13,6 +13,7 @@ logs/
 *.log
 exports/
 memory_store/
+checkpoints.sqlite
 
 # IDE / OS
 .vscode/

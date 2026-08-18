@@ -1,15 +1,17 @@
 # DevCrew AI — Architecture
 
 Hub-and-spoke supervisor pattern in LangGraph: the Supervisor plans and routes;
-every specialized agent reports back to it. Three feedback loops make the
+every specialized agent reports back to it. Four feedback loops make the
 collaboration visible: Reviewer -> Developer (code review), Tester -> Developer
-(failing tests), and Human -> Requirements Analyst (rejected SRS).
+(failing tests), Human -> Requirements Analyst (rejected SRS), and
+Human -> Doc Writer (rejected pre-deployment review).
 
 ```mermaid
 flowchart TD
     USER([User - Streamlit UI])
-    SUP{{"Supervisor<br/>(plans + routes)"}}
-    HITL[/"Human Approval (HITL)"/]
+    SUP{{"Supervisor<br/>(plans + routes, LLM-assisted in live mode)"}}
+    HITL[/"Human Approval — requirements (HITL)"/]
+    HITL2[/"Human Approval — deployment (HITL)"/]
     RA["Requirements Analyst"]
     AR["Software Architect"]
     DEV["Developer"]
@@ -17,7 +19,7 @@ flowchart TD
     QA["QA / Tester"]
     DOC["Documentation Writer"]
     OPS["DevOps Engineer"]
-    MEM[("Shared memory<br/>graph state + checkpoints + vector KB")]
+    MEM[("Shared memory<br/>graph state + SQLite checkpoints + Chroma vector KB")]
     OBS[("Observability<br/>logs + token/cost tracker")]
 
     USER -- "project request" --> SUP
@@ -28,12 +30,14 @@ flowchart TD
     SUP --> REV --> SUP
     SUP --> QA --> SUP
     SUP --> DOC --> SUP
+    SUP --> HITL2 --> SUP
     SUP --> OPS --> SUP
     SUP -- "final report" --> USER
 
     REV -. "changes requested" .-> DEV
     QA -. "failing tests" .-> DEV
     HITL -. "reject + feedback" .-> RA
+    HITL2 -. "reject + feedback" .-> DOC
 
     SUP === MEM
     SUP === OBS
@@ -65,5 +69,6 @@ which is what makes pause/resume (HITL `interrupt()`) possible.
 5. Supervisor -> Reviewer -> CHANGES REQUESTED -> Developer -> code v2 -> Reviewer -> APPROVED
 6. Supervisor -> Tester -> pytest PASS (on FAIL: back to Developer)
 7. Supervisor -> Doc Writer -> user guide
-8. Supervisor -> DevOps -> Dockerfile + CI
-9. Supervisor -> FINISH -> final report to the UI
+8. Supervisor -> Human approval (graph pauses; UI Approve/Reject deployment)
+9. Supervisor -> DevOps -> Dockerfile + CI
+10. Supervisor -> FINISH -> final report to the UI
