@@ -31,6 +31,22 @@ def msg(from_agent: str, to_agent: str, content: str) -> AgentMessage:
     )
 
 
+def _get_llm():
+    """Build the chat model for config.LLM_PROVIDER. Both providers return a
+    LangChain AIMessage with a standardized `usage_metadata`, so callers
+    (and src/observability/token_tracker.py) don't need to care which one
+    is active."""
+    if config.LLM_PROVIDER == "gemini":
+        from langchain_google_genai import ChatGoogleGenerativeAI  # local: not needed in mock mode
+
+        return ChatGoogleGenerativeAI(
+            model=config.GEMINI_MODEL, google_api_key=config.GEMINI_API_KEY, temperature=0.3
+        )
+    from langchain_openai import ChatOpenAI  # local import: not needed in mock mode
+
+    return ChatOpenAI(model=config.OPENAI_MODEL, api_key=config.OPENAI_API_KEY, temperature=0.3)
+
+
 def call_llm(
     agent_name: str, system_prompt: str, user_prompt: str
 ) -> Tuple[str, Dict]:
@@ -40,9 +56,7 @@ def call_llm(
     backoff; a final failure raises RuntimeError, which the supervisor's
     error policy surfaces in the logs instead of crashing the whole app.
     """
-    from langchain_openai import ChatOpenAI  # local import: not needed in mock mode
-
-    llm = ChatOpenAI(model=config.OPENAI_MODEL, temperature=0.3)
+    llm = _get_llm()
     messages = [SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)]
 
     last_error: Exception | None = None

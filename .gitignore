@@ -14,6 +14,7 @@ logs/
 exports/
 memory_store/
 checkpoints.sqlite*
+generated_project_preview/
 
 # IDE / OS
 .vscode/

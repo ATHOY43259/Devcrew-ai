@@ -2,6 +2,9 @@
 langgraph>=1.2
 langchain>=1.3
 langchain-openai>=1.5
+# Optional second LLM provider (set LLM_PROVIDER=gemini in .env to use it —
+# Google AI Studio has a free tier, no billing setup required):
+langchain-google-genai>=2.0
 streamlit>=1.61
 pandas>=2.0
 python-dotenv>=1.0
