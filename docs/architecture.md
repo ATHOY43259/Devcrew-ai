@@ -12,41 +12,92 @@ re-finishing; rejecting that gate with feedback starts another round instead
 of ending it.
 
 ```mermaid
-flowchart TD
-    USER([User - Streamlit UI])
-    SUP{{"Supervisor<br/>(plans + routes, LLM-assisted in live mode)"}}
-    HITL[/"Human Approval — requirements (HITL)"/]
-    HITL2[/"Human Approval — deployment (HITL)"/]
-    RA["Requirements Analyst"]
-    AR["Software Architect"]
-    DEV["Developer"]
-    REV["Code Reviewer"]
-    QA["QA / Tester"]
-    DOC["Documentation Writer"]
-    OPS["DevOps Engineer"]
-    MEM[("Shared memory<br/>graph state + SQLite checkpoints + Chroma vector KB")]
-    OBS[("Observability<br/>logs + token/cost tracker")]
+flowchart LR
+    USER(["User<br/>Streamlit UI"])
+    SUP{{"Supervisor<br/>LLM-assisted routing +<br/>deterministic fallback"}}
+
+    subgraph PLAN[" Planning agents "]
+        RA["Requirements<br/>Analyst"]
+        AR["Software<br/>Architect"]
+        DOC["Documentation<br/>Writer"]
+    end
+
+    subgraph BUILD[" Build-loop agents "]
+        DEV["Developer"]
+        REV["Code Reviewer"]
+        QA["QA / Tester"]
+        OPS["DevOps Engineer"]
+    end
+
+    subgraph GATES[" Human-in-the-loop "]
+        H1[/"Approve<br/>requirements"/]
+        H2[/"Approve<br/>deployment"/]
+        H3[/"Approve<br/>modification"/]
+    end
+
+    subgraph TOOLS[" Tools "]
+        WS[["Web search<br/>(ddgs)"]]
+        RAG[["RAG retrieval"]]
+        SBX[["Sandboxed code exec<br/>(subprocess + pytest)"]]
+    end
+
+    subgraph MEM[" Memory "]
+        STATE[("Graph state<br/>(short-term)")]
+        CKPT[("SQLite checkpoints<br/>(persistent)")]
+        VKB[("Chroma vector KB<br/>(long-term)")]
+    end
+
+    subgraph OBS[" Observability "]
+        LOGS[("Structured logs<br/>run.log + JSON Lines")]
+        COST[("Token usage +<br/>cost tracker")]
+    end
 
     USER -- "project request" --> SUP
-    SUP --> RA --> SUP
-    SUP --> HITL --> SUP
-    SUP --> AR --> SUP
-    SUP --> DEV --> SUP
-    SUP --> REV --> SUP
-    SUP --> QA --> SUP
-    SUP --> DOC --> SUP
-    SUP --> HITL2 --> SUP
-    SUP --> OPS --> SUP
     SUP -- "final report" --> USER
+
+    SUP <--> PLAN
+    SUP <--> BUILD
+    SUP <--> GATES
+    PLAN -. "web search + RAG" .-> TOOLS
+    BUILD -. "sandboxed exec" .-> TOOLS
+    RAG === VKB
+    SUP === MEM
+    SUP === OBS
 
     REV -. "changes requested" .-> DEV
     QA -. "failing tests" .-> DEV
-    HITL -. "reject + feedback" .-> RA
-    HITL2 -. "reject + feedback" .-> DOC
+    H1 -. "reject + feedback" .-> RA
+    H2 -. "reject + feedback" .-> DOC
+    H3 -. "reject + feedback: iterate" .-> DEV
 
-    SUP === MEM
-    SUP === OBS
+    classDef sup fill:#4f46e5,stroke:#312e81,color:#ffffff,font-weight:bold;
+    classDef gate fill:#fef3c7,stroke:#d97706,color:#78350f;
+    classDef agent fill:#ede9fe,stroke:#7c3aed,color:#1e1b4b;
+    classDef tool fill:#dcfce7,stroke:#16a34a,color:#052e16;
+    classDef store fill:#e0e7ff,stroke:#4338ca,color:#1e1b4b;
+    classDef planBg fill:#faf5ff,stroke:#c4b5fd,color:#4c1d95;
+    classDef buildBg fill:#eff6ff,stroke:#93c5fd,color:#1e3a8a;
+    classDef gateBg fill:#fffbeb,stroke:#fcd34d,color:#78350f;
+    classDef toolBg fill:#f0fdf4,stroke:#86efac,color:#052e16;
+    classDef memBg fill:#eef2ff,stroke:#a5b4fc,color:#1e1b4b;
+    classDef obsBg fill:#f8fafc,stroke:#cbd5e1,color:#0f172a;
+
+    class SUP sup
+    class H1,H2,H3 gate
+    class RA,AR,DOC,DEV,REV,QA,OPS agent
+    class WS,RAG,SBX tool
+    class STATE,CKPT,VKB,LOGS,COST store
+    class PLAN planBg
+    class BUILD buildBg
+    class GATES gateBg
+    class TOOLS toolBg
+    class MEM memBg
+    class OBS obsBg
 ```
+
+Legend: solid arrows are the Supervisor <-> agent-group hub-and-spoke flow;
+dotted arrows are the five feedback/collaboration loops (Reviewer, Tester,
+and three HITL gates) plus tool/memory usage.
 
 ## Layers
 
