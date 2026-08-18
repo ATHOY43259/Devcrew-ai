@@ -31,6 +31,8 @@ def _format_code(code_files: dict) -> str:
 
 
 def doc_writer_node(state: ProjectState) -> dict:
+    human_feedback = state.get("human_feedback", "")
+
     if config.MOCK_MODE:
         doc = canned_outputs.DOCUMENTATION
         usage = {}
@@ -55,11 +57,21 @@ def doc_writer_node(state: ProjectState) -> dict:
             f"Code files:\n{_format_code(state.get('code_files', {}))}"
             f"{rag_block}"
         )
+        if human_feedback:
+            user_prompt += (
+                f"\n\nThe human rejected the previous draft before deployment with this "
+                f"feedback — revise accordingly:\n{human_feedback}"
+            )
         doc, usage = call_llm(AGENT, SYSTEM_PROMPT, user_prompt)
-        note = "User guide written from the final code and architecture."
+        note = (
+            "User guide revised using the human's feedback."
+            if human_feedback
+            else "User guide written from the final code and architecture."
+        )
 
     return {
         "documentation": doc,
+        "human_feedback": "",  # consumed
         "agent_messages": [msg(AGENT, "supervisor", note)],
         "logs": [log_entry(AGENT, "INFO", note)],
         "token_usage": usage,

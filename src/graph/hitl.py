@@ -1,15 +1,17 @@
-"""Human-in-the-loop approval node. Owner: Member 1.
+"""Human-in-the-loop approval nodes. Owner: Member 1.
 
 Uses langgraph's interrupt(): the graph PAUSES here (state saved in the
 checkpointer) until the UI/CLI resumes it with a Command(resume=...) whose
 value is {"action": "approve"} or {"action": "reject", "feedback": "..."}.
 
-On reject, the requirements doc is cleared and the human's feedback is put
-into state, so the supervisor sends the Requirements Analyst back to work —
-a human->agent collaboration loop.
+Two gates:
+- human_approval_node: before the Architect starts (approve the SRS). On
+  reject, requirements_doc is cleared so the Requirements Analyst reruns.
+- deployment_approval_node: before DevOps starts (approve deployment). On
+  reject, documentation is cleared so the Doc Writer reruns with feedback.
 
-TODO(Member 1): add a second approval gate before deployment (copy this
-node, gate on "deployment" in approvals) + a global pause/retry control.
+Both are human->agent collaboration loops, the same pattern as
+Reviewer->Developer and Tester->Developer.
 """
 from langgraph.types import interrupt
 
@@ -18,6 +20,14 @@ from src.graph.state import HUMAN, ProjectState
 from src.observability.logging_setup import log_entry
 
 NODE = "human_approval"
+DEPLOYMENT_NODE = "deployment_approval"
+
+
+def _resolve(decision) -> tuple[str, str]:
+    """Accept either a dict or a bare string ("approve") for CLI convenience."""
+    if isinstance(decision, dict):
+        return decision.get("action", "approve"), decision.get("feedback", "")
+    return str(decision), ""
 
 
 def human_approval_node(state: ProjectState) -> dict:
@@ -28,13 +38,7 @@ def human_approval_node(state: ProjectState) -> dict:
             "document": state.get("requirements_doc", ""),
         }
     )
-    # Accept either a dict or a bare string ("approve") for CLI convenience.
-    if isinstance(decision, dict):
-        action = decision.get("action", "approve")
-        feedback = decision.get("feedback", "")
-    else:
-        action = str(decision)
-        feedback = ""
+    action, feedback = _resolve(decision)
 
     if action == "approve":
         return {
@@ -50,4 +54,31 @@ def human_approval_node(state: ProjectState) -> dict:
             msg(HUMAN, "requirements_analyst", f"Requirements REJECTED: {feedback or 'revise'}")
         ],
         "logs": [log_entry(NODE, "WARNING", f"Human rejected the requirements: {feedback}")],
+    }
+
+
+def deployment_approval_node(state: ProjectState) -> dict:
+    decision = interrupt(
+        {
+            "stage": "deployment",
+            "question": "Approve deployment (generate Dockerfile + CI workflow)?",
+            "document": state.get("documentation", ""),
+        }
+    )
+    action, feedback = _resolve(decision)
+
+    if action == "approve":
+        return {
+            "approvals": ["deployment"],
+            "agent_messages": [msg(HUMAN, "supervisor", "Deployment APPROVED.")],
+            "logs": [log_entry(DEPLOYMENT_NODE, "INFO", "Human approved deployment.")],
+        }
+
+    return {
+        "documentation": "",  # cleared -> supervisor re-runs the doc writer
+        "human_feedback": feedback or "Please revise the documentation before deployment.",
+        "agent_messages": [
+            msg(HUMAN, "doc_writer", f"Deployment REJECTED: {feedback or 'revise the docs'}")
+        ],
+        "logs": [log_entry(DEPLOYMENT_NODE, "WARNING", f"Human rejected deployment: {feedback}")],
     }
