@@ -63,3 +63,51 @@ def test_supervisor_decide_ordering():
     assert decide({})[0] == "requirements_analyst"
     assert decide({"requirements_doc": "x"})[0] == "human_approval"
     assert decide({"requirements_doc": "x", "approvals": ["requirements"]})[0] == "architect"
+
+
+def test_modification_loop_after_finish():
+    """A finished project can take a follow-up modification request on the
+    same thread: Developer -> Reviewer -> Tester run again, then a NEW
+    approval gate pauses before re-finishing. Rejecting it with feedback
+    starts another round instead of ending the loop."""
+    app = build_graph()
+    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+    payload = {"project_request": "Build a to-do list REST API"}
+    for _ in range(5):
+        events = list(app.stream(payload, config, stream_mode="updates"))
+        if not any("__interrupt__" in e for e in events):
+            break
+        payload = Command(resume={"action": "approve"})
+    state = app.get_state(config).values
+    assert state["final_report"]
+
+    mod_payload = {
+        "modification_request": "add a favorite feature",
+        "modification_pending": True,
+        "modification_approved": False,
+        "review_feedback": "",
+        "review_approved": False,
+        "test_report": "",
+        "tests_passed": False,
+        "final_report": "",
+    }
+    # Round 1: reject with feedback -> must loop back for another round.
+    events = list(app.stream(mod_payload, config, stream_mode="updates"))
+    assert any("__interrupt__" in e for e in events)
+    interrupt_value = next(e["__interrupt__"][0].value for e in events if "__interrupt__" in e)
+    assert interrupt_value["stage"] == "modification"
+
+    events = list(app.stream(
+        Command(resume={"action": "reject", "feedback": "also add a due date"}),
+        config, stream_mode="updates",
+    ))
+    assert any("__interrupt__" in e for e in events), "rejecting should pause at the gate again, not finish"
+
+    # Round 2: approve -> pipeline re-finishes.
+    events = list(app.stream(Command(resume={"action": "approve"}), config, stream_mode="updates"))
+    assert not any("__interrupt__" in e for e in events)
+
+    state = app.get_state(config).values
+    assert state["final_report"], "final report missing after the modification was approved"
+    assert state["modification_request"] == "", "modification_request should be consumed on approval"
+    assert state["approvals"].count("modification") == 1, "only the FINAL approval should count"

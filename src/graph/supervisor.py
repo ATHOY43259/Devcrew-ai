@@ -18,15 +18,16 @@ AGENT = "supervisor"
 FINISH = "FINISH"
 HUMAN_APPROVAL = "human_approval"
 DEPLOYMENT_APPROVAL = "deployment_approval"
+MODIFICATION_APPROVAL = "modification_approval"
 
-VALID_NEXT_NODES = set(AGENT_ORDER) | {HUMAN_APPROVAL, DEPLOYMENT_APPROVAL, FINISH}
+VALID_NEXT_NODES = set(AGENT_ORDER) | {HUMAN_APPROVAL, DEPLOYMENT_APPROVAL, MODIFICATION_APPROVAL, FINISH}
 
 SUPERVISOR_SYSTEM_PROMPT = """You are the Supervisor / Project Manager of an
 AI software engineering team. You are given the current project state and
 must decide which team member acts next.
 
 Respond with exactly two lines:
-NEXT: <one of: requirements_analyst, human_approval, architect, developer, reviewer, tester, deployment_approval, doc_writer, devops, FINISH>
+NEXT: <one of: requirements_analyst, human_approval, architect, developer, reviewer, tester, deployment_approval, doc_writer, devops, modification_approval, FINISH>
 REASON: <one short sentence explaining why, for a live status dashboard>"""
 
 
@@ -41,8 +42,12 @@ def decide(state: ProjectState) -> tuple[str, str]:
         return HUMAN_APPROVAL, "SRS drafted — pausing for human approval (HITL)."
     if not state.get("architecture_doc"):
         return "architect", "Requirements approved — designing the architecture."
-    if not state.get("code_files"):
-        return "developer", "Architecture ready — implementing the code."
+    if not state.get("code_files") or state.get("modification_pending"):
+        return "developer", (
+            "Applying the requested modification."
+            if state.get("modification_pending")
+            else "Architecture ready — implementing the code."
+        )
 
     if not state.get("review_approved"):
         if state.get("review_feedback"):
@@ -57,6 +62,9 @@ def decide(state: ProjectState) -> tuple[str, str]:
                 return "developer", "Tests failed — sending the report back to the Developer."
             return "doc_writer", f"Max revisions ({max_rev}) reached — proceeding with failing tests flagged."
         return "tester", "Review approved — running QA."
+
+    if state.get("modification_request") and not state.get("modification_approved"):
+        return MODIFICATION_APPROVAL, "Modification implemented and tested — pausing for your approval."
 
     if not state.get("documentation"):
         return "doc_writer", "QA passed — writing the documentation."
@@ -76,7 +84,10 @@ def _state_summary(state: ProjectState) -> str:
 - tests_passed: {state.get('tests_passed', False)}
 - revision_count: {state.get('revision_count', 0)} (max {config.MAX_REVISIONS})
 - documentation: {"present" if state.get('documentation') else "missing"}
-- deployment_files: {len(state.get('deployment_files', {}))} file(s)"""
+- deployment_files: {len(state.get('deployment_files', {}))} file(s)
+- modification_request: {state.get('modification_request') or "none pending"}
+- modification_pending: {state.get('modification_pending', False)}
+- modification_approved: {state.get('modification_approved', False)}"""
 
 
 def _parse_llm_routing(text: str) -> tuple[str, str]:
@@ -120,8 +131,12 @@ def _final_report(state: ProjectState) -> str:
     files = "\n".join(f"- `{p}`" for p in sorted(state.get("code_files", {})))
     deploy = "\n".join(f"- `{p}`" for p in sorted(state.get("deployment_files", {})))
     usage = state.get("token_usage", {})
+    mod_rounds = state.get("approvals", []).count("modification")
+    mod_line = (
+        f"\n**Modifications applied:** {mod_rounds} round(s), each human-approved.\n" if mod_rounds else ""
+    )
     return f"""# Final Delivery Report
-
+{mod_line}
 **Project request:** {state.get('project_request', '')}
 
 **Pipeline:** requirements -> human approval -> architecture -> code ->

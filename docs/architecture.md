@@ -1,10 +1,15 @@
 # DevCrew AI — Architecture
 
 Hub-and-spoke supervisor pattern in LangGraph: the Supervisor plans and routes;
-every specialized agent reports back to it. Four feedback loops make the
+every specialized agent reports back to it. Five feedback loops make the
 collaboration visible: Reviewer -> Developer (code review), Tester -> Developer
-(failing tests), Human -> Requirements Analyst (rejected SRS), and
-Human -> Doc Writer (rejected pre-deployment review).
+(failing tests), Human -> Requirements Analyst (rejected SRS),
+Human -> Doc Writer (rejected pre-deployment review), and — after the pipeline
+first finishes — an optional Human -> Developer modification loop: submit a
+follow-up change request on the same thread, it runs back through
+Developer -> Reviewer -> Tester, then pauses at its own approval gate before
+re-finishing; rejecting that gate with feedback starts another round instead
+of ending it.
 
 ```mermaid
 flowchart TD
@@ -72,3 +77,6 @@ which is what makes pause/resume (HITL `interrupt()`) possible.
 8. Supervisor -> Human approval (graph pauses; UI Approve/Reject deployment)
 9. Supervisor -> DevOps -> Dockerfile + CI
 10. Supervisor -> FINISH -> final report to the UI
+11. Optional, any number of times: UI submits a modification request on the
+    same thread -> Developer -> Reviewer -> Tester -> Human approval (graph
+    pauses; Approve re-finishes, Reject + feedback loops back to step 11)

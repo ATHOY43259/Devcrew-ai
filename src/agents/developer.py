@@ -189,29 +189,47 @@ def _generate_files(agent_name: str, user_prompt: str) -> tuple[dict, dict]:
         return files, merged_usage
 
 
+def _format_code(code_files: dict) -> str:
+    return "\n\n".join(f"### {path}\n```\n{content}\n```" for path, content in code_files.items())
+
+
 def developer_node(state: ProjectState) -> dict:
     revision = state.get("revision_count", 0)
+    modifying = bool(state.get("modification_pending"))
     review_rework = bool(state.get("review_feedback")) and not state.get("review_approved", False)
     test_rework = bool(state.get("test_report")) and not state.get("tests_passed", False)
-    is_rework = review_rework or test_rework
+    is_rework = modifying or review_rework or test_rework
 
     if config.MOCK_MODE:
         files = canned_outputs.CODE_V2 if is_rework else canned_outputs.CODE_V1
         usage = {}
         note = (
-            f"Rework round {revision + 1}: fixed all issues from the code review (mock mode)."
+            f"Applied the requested modification (mock mode)."
+            if modifying
+            else f"Rework round {revision + 1}: fixed all issues from the code review (mock mode)."
             if is_rework
             else "Implemented v1 from the architecture (mock mode)."
         )
     else:
-        user_prompt = (
-            f"Requirements:\n{state.get('requirements_doc', '')}\n\n"
-            f"Architecture:\n{state.get('architecture_doc', '')}"
-        )
-        if review_rework:
-            user_prompt += f"\n\nReviewer feedback to fix:\n{state['review_feedback']}"
-        if test_rework:
-            user_prompt += f"\n\nFailing test report to fix:\n{state['test_report']}"
+        if modifying:
+            # A post-finish modification request: work from the EXISTING
+            # code, not from scratch — everything not mentioned must stay
+            # exactly as it is.
+            user_prompt = (
+                f"Existing code files:\n{_format_code(state.get('code_files', {}))}\n\n"
+                "The user has requested this change to the project above — apply ONLY this "
+                "change and leave everything else exactly as it is:\n"
+                f"{state.get('modification_request', '')}"
+            )
+        else:
+            user_prompt = (
+                f"Requirements:\n{state.get('requirements_doc', '')}\n\n"
+                f"Architecture:\n{state.get('architecture_doc', '')}"
+            )
+            if review_rework:
+                user_prompt += f"\n\nReviewer feedback to fix:\n{state['review_feedback']}"
+            if test_rework:
+                user_prompt += f"\n\nFailing test report to fix:\n{state['test_report']}"
 
         files, usage = _generate_files(AGENT, user_prompt)
         errors = syntax_check(files) + _check_frontend_styling(files)
@@ -234,13 +252,16 @@ def developer_node(state: ProjectState) -> dict:
                 log_entry(AGENT, "WARNING", f"Issue-fix retry also failed to parse, keeping v1: {error}")
 
         note = (
-            f"Rework round {revision + 1}: fixed the reported issues ({len(files)} files)."
+            f"Applied the requested modification ({len(files)} files)."
+            if modifying
+            else f"Rework round {revision + 1}: fixed the reported issues ({len(files)} files)."
             if is_rework
             else f"Implemented v1 from the architecture ({len(files)} files)."
         )
 
     return {
         "code_files": files,
+        "modification_pending": False,  # this round's change has been applied
         # Rework resets review + tests so the Reviewer/Tester run again:
         "review_feedback": "",
         "review_approved": False,
