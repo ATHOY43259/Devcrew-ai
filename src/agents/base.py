@@ -63,7 +63,11 @@ def call_llm(
     for attempt in range(1, MAX_LLM_RETRIES + 1):
         try:
             response = llm.invoke(messages)
-            return response.content, usage_delta(agent_name, response)
+            # response.text normalizes both plain-string content (OpenAI) and
+            # content-block lists (Gemini's newer models return
+            # [{"type": "text", "text": ..., "extras": {...}}, ...], not a
+            # string) into one plain str — every caller expects a string.
+            return response.text, usage_delta(agent_name, response)
         except Exception as error:  # noqa: BLE001 — log and retry any API error
             last_error = error
             log_entry(agent_name, "WARNING", f"LLM call failed (attempt {attempt}): {error}")

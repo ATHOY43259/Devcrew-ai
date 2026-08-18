@@ -16,7 +16,7 @@ OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 
 ACTIVE_MODEL: str = GEMINI_MODEL if LLM_PROVIDER == "gemini" else OPENAI_MODEL
 _ACTIVE_API_KEY: str = GEMINI_API_KEY if LLM_PROVIDER == "gemini" else OPENAI_API_KEY
