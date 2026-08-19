@@ -249,3 +249,29 @@ jobs:
       - run: pytest -q
 ''',
 }
+RELEASE_NOTES = """# Release Notes — To-Do REST API v1.0.0
+
+## Summary
+Initial release of the To-Do REST API: a Flask JSON service for creating,
+listing, completing, and deleting to-do items, built end-to-end by the
+DevCrew AI pipeline.
+
+## Added
+- `POST /todos` — create a to-do item (title required, max 200 chars).
+- `GET /todos` — list all to-do items.
+- `PATCH /todos/<id>/done` — mark an item as done.
+- `DELETE /todos/<id>` — delete an item.
+
+## Fixed
+- Reviewer flagged missing input validation on `POST /todos` in v1; the
+  Developer added a 400 response for empty/oversized titles before this
+  release (see the review -> rework loop in the run log).
+
+## Deployment
+- Containerized with the included `Dockerfile` (Python 3.11-slim, gunicorn).
+- CI runs the full pytest suite on every push via
+  `.github/workflows/ci.yml`.
+
+## Known limitations
+- In-memory store only; data does not persist across restarts.
+"""
