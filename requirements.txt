@@ -16,6 +16,11 @@ langgraph-checkpoint-sqlite>=2.0
 # Member 2 (RAG / knowledge base — uses Chroma's built-in local embedding,
 # no API key required):
 chromadb>=0.5
+# Streamlit Community Cloud's Linux image ships an sqlite3 older than the
+# 3.35 Chroma requires; swap it for this at runtime (see ui/app.py). Skipped
+# on Windows/macOS dev machines, where the system sqlite3 is already new
+# enough and no prebuilt wheel exists anyway.
+pysqlite3-binary>=0.5; sys_platform == "linux"
 
 # Member 2 (web search tool, no API key required):
 ddgs>=9.0
