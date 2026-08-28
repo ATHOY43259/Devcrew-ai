@@ -7,8 +7,18 @@ Every rubric UI item has a tab or control below: live incremental trace
 checkpoint-backed pause/retry control (Member 1's get_history /
 retry_last_step), and colored agent status cards.
 """
-import io
 import sys
+
+# Streamlit Community Cloud's system sqlite3 is older than the 3.35 Chroma
+# requires; swap in pysqlite3-binary (Linux-only, see requirements.txt)
+# before anything below transitively imports sqlite3 or chromadb.
+try:
+    __import__("pysqlite3")
+    sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
+except ImportError:
+    pass
+
+import io
 import uuid
 import zipfile
 from pathlib import Path
