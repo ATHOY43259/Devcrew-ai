@@ -6,6 +6,8 @@ deployment files — with a live Streamlit dashboard and human-in-the-loop
 approval. Built with **LangGraph** for the *Interactive Multi-Agent AI
 System* assignment.
 
+**Live demo:** https://devcrew-ai-jjyfatnokfgytkjskhke46.streamlit.app/
+
 ![Architecture](docs/architecture.png)
 
 ## Team
