@@ -1,0 +1,249 @@
+\documentclass[a4paper,10pt]{article}
+
+% =================== PACKAGE IMPORTS ===================
+\usepackage{latexsym}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{ragged2e}
+\usepackage[empty]{fullpage}
+\usepackage{wrapfig}
+\usepackage{tabularx}
+\usepackage{titlesec}
+\usepackage{geometry}
+\usepackage{marvosym}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{multicol}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{hyperref}
+
+% =================== COLORS ===================
+\definecolor{darkblue}{RGB}{0,0,139}
+
+% =================== PAGE SETUP ===================
+\geometry{left=1.2cm, top=0.5cm, right=1.0cm, bottom=0.6cm}
+\setlength{\footskip}{5pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=darkblue,
+    filecolor=darkblue,
+    urlcolor=darkblue,
+}
+
+% =================== BOX STYLE ===================
+\usepackage[most]{tcolorbox}
+\tcbset{
+    frame code={},
+    center title,
+    left=0pt,
+    right=0pt,
+    top=0pt,
+    bottom=0pt,
+    colback=gray!20,
+    colframe=white,
+    width=\dimexpr\textwidth\relax,
+    enlarge left by=-2mm,
+    boxsep=4pt,
+    arc=0pt,outer arc=0pt,
+}
+
+% =================== SECTION STYLE ===================
+\titleformat{\section}{
+  \vspace{-4pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-6pt}]
+
+% =================== CUSTOM COMMANDS ===================
+\newcommand{\resumeItem}[2]{\item{\textbf{#1}{\hspace{0.5mm}#2 \vspace{-0.5mm}}}}
+\newcommand{\resumePOR}[3]{\vspace{0.5mm}\item\begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}\textbf{#1}\hspace{0.3mm}#2 & \textit{\small{#3}}\end{tabular*}\vspace{-2mm}}
+\newcommand{\resumeSubheading}[4]{\vspace{0.5mm}\item\begin{tabular*}{0.98\textwidth}[t]{l@{\extracolsep{\fill}}r}\textbf{#1} & \textit{\footnotesize{#4}} \\ \textit{\footnotesize{#3}} &  \footnotesize{#2}\end{tabular*}\vspace{-2.4mm}}
+\newcommand{\resumeProject}[4]{\vspace{0.5mm}\item\begin{tabular*}{0.98\textwidth}[t]{l@{\extracolsep{\fill}}r}\textbf{#1} & \textit{\footnotesize{#3}} \\ \footnotesize{\textit{#2}} & \footnotesize{#4}\end{tabular*}\vspace{-2.4mm}}
+\newcommand{\resumeSubItem}[2]{\resumeItem{#1}{#2}\vspace{-4pt}}
+
+\renewcommand{\labelitemi}{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=*,labelsep=1mm]}
+\newcommand{\resumeItemListStart}{\begin{itemize}[leftmargin=*,labelsep=1mm,itemsep=0.5mm]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}\vspace{2mm}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-2mm}}
+
+% =================== HEADER ===================
+\begin{document}
+\fontfamily{ppl}\selectfont
+
+\begin{center}
+    {\Huge\textbf{Athoy Kanti Ray}}
+\end{center}
+\vspace{-5mm}
+
+\begin{center}
+    \small{
+    +8801735850987 | \href{mailto:athoykanti.roy1612@gmail.com}{athoykanti.roy1612@gmail.com}
+    }
+\end{center}
+\vspace{-6mm}
+
+\begin{center}
+    \small{
+    \href{https://www.linkedin.com/in/athoykanti/}{LinkedIn: athoykanti} |
+    \href{https://github.com/ATHOY43259}{GitHub: ATHOY43259} |
+    \href{https://athoy43259.github.io}{athoy43259.github.io}
+    }
+\end{center}
+\vspace{-6mm}
+
+\begin{center}
+    \small{Bashundhara R/A, Dhaka - 1229, Bangladesh}
+\end{center}
+
+\vspace{-4mm}
+
+% =================== SUMMARY ===================
+\section{\textbf{Summary}}
+\vspace{1mm}
+\small{
+Software Engineer with strong knowledge of C\#, PHP, JavaScript, and Python, and hands-on experience building web and desktop applications. Proficient in object-oriented programming, relational databases (SQL Server, MySQL, PostgreSQL), and software design principles. Skilled at analyzing requirements, designing solutions per specification, and debugging and testing implementations to ensure correctness. A quick learner who collaborates effectively and communicates clearly in English.
+}
+\vspace{-2mm}
+
+% =================== EXPERIENCE ===================
+\section{\textbf{Experience}}
+\vspace{-0.4mm}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{Cassetex [\href{https://www.cassetex.com/}{\textcolor{darkblue}{$\oplus$}}]}{Mohakhali DOHS, Dhaka-1212}
+{Associate Software Engineer}{March 2025 - Present}
+\resumeItemListStart
+\item Analyzed project requirements and translated them into technical deliverables following software design specifications.
+\item Designed and implemented scalable web applications using Next.js, Laravel (PHP), and PostgreSQL, applying OOP principles.
+\item Debugged and tested features to ensure functionality and reliability before production deployment.
+\item Designed and integrated secure RESTful APIs, improving system interoperability across services.
+\item Deployed and maintained production systems on Linux VPS using GitHub Actions and secure SSH pipelines.
+\item Collaborated with cross-functional teams, ensuring knowledge transfer and consistent code quality.
+\resumeItemListEnd
+
+\resumeSubheading
+{Smilecarelimited}{Banani, Dhaka}
+{UI/UX Designer - Intern}{September 2024 - January 2025}
+\resumeItemListStart
+\item Analyzed user requirements to design intuitive product interfaces, ensuring brand consistency.
+\item Tools: Figma, Canva.
+\resumeItemListEnd
+
+\resumeSubheading
+{Kreatech}{Baridhara, Dhaka}
+{Front-End Developer - Intern}{May 2024 - August 2024}
+\resumeItemListStart
+\item Collaborated with designers and back-end teams to implement dynamic, interactive front-end interfaces using JavaScript and React.js.
+\item Debugged cross-browser issues and optimized site load time and SEO performance.
+\item Utilized Git for version control and ensured smooth knowledge transfer within the team.
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+\vspace{-4mm}
+
+% =================== PROJECTS ===================
+\section{\textbf{Projects}}
+\vspace{-0.4mm}
+\resumeSubHeadingListStart
+
+\resumeProject
+{DevCrew AI --- Multi-Agent Software Engineering System}{Tools: Python, LangGraph, LangChain, Streamlit, ChromaDB}{2026}
+{[\href{https://github.com/ATHOY43259/Devcrew-ai}{\textcolor{darkblue}{GitHub}}] [\href{https://devcrew-ai.streamlit.app/}{\textcolor{darkblue}{Live Demo}}]}
+\resumeItemListStart
+\item Architected a LangGraph-orchestrated multi-agent pipeline, with a supervisor agent routing work across 7 specialist agents (requirements, architecture, development, code review, testing, docs, DevOps) to turn a plain-English request into reviewed, tested, deployable code.
+\item Implemented a Chroma-backed RAG knowledge base, sandboxed code-execution and web-search tools, SQLite checkpointing with retry, and three human-in-the-loop approval gates; deployed a live Streamlit dashboard with real-time execution trace and token/cost tracking.
+\resumeItemListEnd
+
+\resumeProject
+{Pharmacy Management System}{Tools: ASP.NET Web API, C\#, Microsoft SQL Server}{2022}
+{[\href{https://github.com/ATHOY43259/Pharmacy-Management-System}{\textcolor{darkblue}{GitHub}}]}
+\resumeItemListStart
+\item Designed and implemented a backend system using C\# and OOP principles for pharmacy operations --- CRUD for medicines and pharmacists via RESTful web API with SQL Server as the relational database.
+\resumeItemListEnd
+
+\resumeProject
+{My Home - Web Application}{Tools: HTML, CSS, PHP, MySQL}{2022}
+{[\href{https://github.com/ATHOY43259/WebTechnology}{\textcolor{darkblue}{GitHub}}]}
+\resumeItemListStart
+\item Developed an online hostel management application with role-based access control for managers and staff, following standard coding practices.
+\resumeItemListEnd
+
+\resumeProject
+{Traffic View in a City}{Tools: C++, OpenGL}{2023}
+{[\href{https://github.com/ATHOY43259/trafficViewInaCity}{\textcolor{darkblue}{GitHub}}]}
+\resumeItemListStart
+\item Built an interactive traffic simulation applying object-oriented design for managing traffic lights and vehicle movement.
+\resumeItemListEnd
+
+\resumeSubHeadingListEnd
+\vspace{-4mm}
+
+% =================== SKILLS ===================
+\section{\textbf{Skills}}
+\vspace{-0.4mm}
+\resumeSubHeadingListStart
+\resumeSubItem{Programming Languages:}{C\#, PHP, Python, JavaScript, C++, HTML, CSS}
+\resumeSubItem{OOP \& Design:}{Object-Oriented Programming, Software Design Patterns, RESTful API Design}
+\resumeSubItem{Frontend Development:}{React.js, Next.js, Tailwind CSS}
+\resumeSubItem{Backend Development:}{Laravel, ASP.NET Web API}
+\resumeSubItem{Databases:}{Microsoft SQL Server, MySQL, PostgreSQL, Oracle}
+\resumeSubItem{Testing \& Debugging:}{Selenium, Unit Testing, Manual Debugging, Postman API Testing}
+\resumeSubItem{Tools \& Platforms:}{GitHub, Git, VS Code, Visual Studio, Figma}
+\resumeSubItem{Operating Systems:}{Windows, Ubuntu, macOS, Kali Linux}
+\resumeSubHeadingListEnd
+\vspace{-4mm}
+
+% =================== EDUCATION ===================
+\section{\textbf{Education}}
+\vspace{-0.4mm}
+\resumeSubHeadingListStart
+
+\resumeSubheading
+{B.Sc. in Computer Science and Engineering}{Dhaka, Bangladesh}
+{American International University-Bangladesh (AIUB)}{2020 - 2024}
+\resumeItemListStart
+\item CGPA: 3.27/4.00
+\resumeItemListEnd
+
+\resumeSubheading
+{Higher Secondary Certificate (Science)}{Barisal Board}
+{Srijanee Bidyaniketan-Dumki, Patuakhali}{2019}
+
+\resumeSubheading
+{Secondary School Certificate (Science)}{Barisal Board}
+{Srijanee Bidyaniketan-Dumki, Patuakhali}{2016}
+
+\resumeSubHeadingListEnd
+\vspace{-4mm}
+
+% =================== CERTIFICATIONS ===================
+\section{\textbf{Certifications}}
+\vspace{-0.2mm}
+\resumeSubHeadingListStart
+
+\resumePOR{IBM Full Stack Software Developer --}{IBM \textbar\ Issued May 2026 \textbar\ Credential ID: XKPFJH2B7MME}{}
+
+\resumePOR{IBM DevOps, Cloud, and Agile Foundations --}{IBM \textbar\ Issued Apr 2026 \textbar\ Credential ID: 3OG41WB79T3D}{}
+
+\resumeSubHeadingListEnd
+\vspace{-4mm}
+
+% =================== REFERENCES ===================
+\section*{\textbf{References}}
+\vspace{1mm}
+\begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}l}
+\textbf{Faisal Khan} & \textbf{S M Hasan Mahmud} \\
+AGM / Sr SW Architect & Associate Professor, Department of Software Engineering \\
+Link3 Technologies Ltd & \href{https://scholar.google.com/citations?view_op=view_org&hl=en&org=17104986342316555786}{Daffodil International University} \\
+\end{tabular*}
+
+\end{document}
